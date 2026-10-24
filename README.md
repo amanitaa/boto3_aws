@@ -26,5 +26,18 @@ poetry run python main.py -h
 Checks whether the bucket exists; if it does not, creates it.
 
 ```shell
-poetry run python main.py "any-name-of-s3"
+poetry run python main.py create_bucket "any-name-of-s3"
 ```
+
+### Bucket policy
+
+Checks whether the bucket has a policy; if it does not, assigns one that makes
+all files under `dev/` and `test/` publicly readable.
+
+```shell
+poetry run python main.py bucket_policy "any-name-of-s3"
+```
+
+> New buckets have **Block Public Access** enabled, which rejects public
+> policies with `AccessDenied`. The command turns off `BlockPublicPolicy` and
+> `RestrictPublicBuckets` for the bucket before assigning the policy.
