@@ -10,6 +10,7 @@ from auth import init_client
 from bucket.crud import list_buckets, create_bucket, delete_bucket, bucket_exists
 from bucket.lifecycle import set_lifecycle_policy, read_lifecycle_policy
 from bucket.versioning import versioning, get_versioning_status
+from bucket.organize import object_per_extension
 from bucket.policy import (
     read_bucket_policy,
     generate_public_read_policy,
@@ -160,6 +161,16 @@ def main():
                 print(json.dumps(rules, indent=2))
             else:
                 logger.info("Bucket '%s' has no lifecycle policy", args.name)
+
+        case "bucket" if args.organize:
+            require_bucket(s3_client, args.name)
+            moved = object_per_extension(s3_client, args.name)
+            if not moved:
+                logger.info("Nothing to organize in '%s'", args.name)
+            else:
+                logger.info("Moved %d file(s) in '%s':", sum(moved.values()), args.name)
+                for folder, count in sorted(moved.items()):
+                    print(f"{folder} - {count}")
 
         case "versioning":
             require_bucket(s3_client, args.name)

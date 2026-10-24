@@ -89,6 +89,17 @@ def build_subcommands(subparsers):
         help="Copy the second-to-last version so it becomes the newest version.",
     )
 
+    bucket = bucket_arguments(
+        subparsers.add_parser("bucket", help="Work with a whole bucket, e.g. organize it (-org).")
+    )
+    bucket_action = bucket.add_mutually_exclusive_group(required=True)
+    bucket_action.add_argument(
+        "-org",
+        "--organize",
+        action="store_true",
+        help="Move each top-level file into a folder named after its extension.",
+    )
+
     bucket_versioning = bucket_arguments(
         subparsers.add_parser("versioning", help="Show, enable or suspend bucket versioning.")
     )

@@ -68,6 +68,33 @@ bucket does not exist.
 poetry run python main.py delete_bucket "any-name-of-s3"
 ```
 
+### Organize files by extension
+
+Moves every top-level file into a folder named after its extension and prints
+how many files were moved per extension.
+
+```shell
+poetry run python main.py bucket "any-name-of-s3" -org
+```
+
+```
+INFO: Moved 6 file(s) in 'any-name-of-s3':
+csv - 4
+jpg - 1
+unknown - 1
+```
+
+- `image.jpg` → `jpg/image.jpg`, `users.csv` → `csv/users.csv`
+- Extensions are lower-cased (`photo.PNG` → `png/photo.PNG`); files without an
+  extension go to `unknown/`
+- Only top-level files are moved, so files already in a folder (e.g.
+  `dev/photo.png`) stay where they are and running it again is safe
+- If the target already exists, the file is skipped with a warning instead of
+  being overwritten
+
+> S3 has no real folders: a "folder" is just a key prefix, so moving a file
+> means copying it to `jpg/image.jpg` and deleting `image.jpg`.
+
 ### Versioning
 
 Show whether versioning is enabled (`-st`), or enable (`-on`) / suspend
@@ -214,6 +241,7 @@ poetry run python main.py list_objects "any-name-of-s3"
 | `auth.py` | `init_client()` |
 | `bucket/crud.py` | `list_buckets()`, `create_bucket()`, `delete_bucket()`, `bucket_exists()` |
 | `bucket/lifecycle.py` | `set_lifecycle_policy()`, `read_lifecycle_policy()` |
+| `bucket/organize.py` | `object_per_extension()` |
 | `bucket/versioning.py` | `versioning()`, `get_versioning_status()` |
 | `bucket/policy.py` | `generate_public_read_policy()`, `create_bucket_policy()`, `read_bucket_policy()` |
 | `object/crud.py` | `download_file_and_upload_to_s3()`, `upload_small_file()`, `upload_large_file()`, `delete_object()` |
