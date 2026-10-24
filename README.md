@@ -41,3 +41,13 @@ poetry run python main.py bucket_policy "any-name-of-s3"
 > New buckets have **Block Public Access** enabled, which rejects public
 > policies with `AccessDenied`. The command turns off `BlockPublicPolicy` and
 > `RestrictPublicBuckets` for the bucket before assigning the policy.
+
+### Delete bucket
+
+Checks whether the bucket exists; if it does, deletes all of its objects
+(including old versions) and then the bucket itself. Otherwise prints that the
+bucket does not exist.
+
+```shell
+poetry run python main.py delete_bucket "any-name-of-s3"
+```

@@ -28,3 +28,26 @@ def create_bucket(aws_s3_client, bucket_name) -> bool:
     if status_code == 200:
         return True
     return False
+
+def empty_bucket(aws_s3_client, bucket_name) -> int:
+    deleted = 0
+    paginator = aws_s3_client.get_paginator("list_object_versions")
+    for page in paginator.paginate(Bucket=bucket_name):
+        objects = [
+            {"Key": item["Key"], "VersionId": item["VersionId"]}
+            for item in page.get("Versions", []) + page.get("DeleteMarkers", [])
+        ]
+        if objects:
+            aws_s3_client.delete_objects(
+                Bucket=bucket_name, Delete={"Objects": objects, "Quiet": True}
+            )
+            deleted += len(objects)
+    return deleted
+
+
+def delete_bucket(aws_s3_client, bucket_name) -> bool:
+    response = aws_s3_client.delete_bucket(Bucket=bucket_name)
+    status_code = response["ResponseMetadata"]["HTTPStatusCode"]
+    if status_code == 204:
+        return True
+    return False

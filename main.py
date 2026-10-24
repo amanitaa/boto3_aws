@@ -4,7 +4,7 @@ import sys
 from botocore.exceptions import ClientError
 
 from auth import init_client
-from bucket.crud import bucket_exists, create_bucket
+from bucket.crud import bucket_exists, create_bucket, empty_bucket, delete_bucket
 from bucket.policy import (
     read_bucket_policy,
     public_prefix_policy,
@@ -22,6 +22,7 @@ subparsers = parser.add_subparsers(dest="command", required=True)
 
 bucket_arguments(subparsers.add_parser("create_bucket", help="Create a bucket if it does not already exist."))
 bucket_arguments(subparsers.add_parser("bucket_policy", help="Make /dev and /test public if the bucket has no policy yet.",))
+bucket_arguments(subparsers.add_parser("delete_bucket", help="Delete a bucket (and its contents) if it exists."))
 
 
 def main():
@@ -49,6 +50,16 @@ def main():
                             f"Policy assigned: '{args.name}/dev/*' and "
                             f"'{args.name}/test/*' are now public"
                         )
+
+            case "delete_bucket":
+                if not bucket_exists(s3_client, args.name):
+                    print(f"Bucket: '{args.name}' does not exist")
+                else:
+                    deleted = empty_bucket(s3_client, args.name)
+                    if deleted:
+                        print(f"Deleted {deleted} object(s) from '{args.name}'")
+                    if delete_bucket(s3_client, args.name):
+                        print(f"Bucket: '{args.name}' successfully deleted")
 
     except ClientError as e:
         print(f"Error: {e.response['Error']['Message']}", file=sys.stderr)
