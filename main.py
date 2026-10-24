@@ -9,6 +9,7 @@ from botocore.exceptions import ClientError, NoCredentialsError
 from auth import init_client
 from bucket.crud import list_buckets, create_bucket, delete_bucket, bucket_exists
 from bucket.lifecycle import set_lifecycle_policy, read_lifecycle_policy
+from bucket.versioning import versioning, get_versioning_status
 from bucket.policy import (
     read_bucket_policy,
     generate_public_read_policy,
@@ -26,6 +27,7 @@ from object.crud import (
     UnsupportedFileType,
 )
 from object.policy import set_object_access_policy
+from object.versioning import list_object_versions, promote_previous_version
 
 logger = logging.getLogger("s3_cli")
 
@@ -159,9 +161,51 @@ def main():
             else:
                 logger.info("Bucket '%s' has no lifecycle policy", args.name)
 
+        case "versioning":
+            require_bucket(s3_client, args.name)
+            if args.status:
+                status = get_versioning_status(s3_client, args.name)
+                if status == "Enabled":
+                    logger.info("Versioning is enabled for '%s'", args.name)
+                elif status == "Suspended":
+                    logger.info("Versioning is suspended for '%s'", args.name)
+                else:
+                    logger.info("Versioning has never been enabled for '%s'", args.name)
+            else:
+                versioning(s3_client, args.name, args.enable)
+                logger.info(
+                    "Versioning %s for '%s'",
+                    "enabled" if args.enable else "suspended",
+                    args.name,
+                )
+
+        case "object" if args.list_versions:
+            require_bucket(s3_client, args.name)
+            versions = list_object_versions(s3_client, args.name, args.key)
+            if not versions:
+                logger.info("File '%s' does not exist in '%s'", args.key, args.name)
+            else:
+                logger.info("File '%s' has %d version(s):", args.key, len(versions))
+                for number, version in enumerate(versions, start=1):
+                    print(
+                        f"  {number}. {version['LastModified']:%Y-%m-%d %H:%M:%S %Z}"
+                        f"  {version['Size']} bytes  id={version['VersionId']}"
+                        f"{'  (latest)' if version['IsLatest'] else ''}"
+                    )
+
+        case "object" if args.promote_previous:
+            require_bucket(s3_client, args.name)
+            previous, new_version_id = promote_previous_version(
+                s3_client, args.name, args.key
+            )
+            logger.info(
+                "Version from %s of '%s' promoted to the newest version (id=%s)",
+                f"{previous['LastModified']:%Y-%m-%d %H:%M:%S}",
+                args.key,
+                new_version_id,
+            )
+
         case "object":
-            if not args.delete:
-                parser.error("object: choose an action, e.g. -del to delete the file")
             require_bucket(s3_client, args.name)
             if not object_exists(s3_client, args.name, args.key):
                 logger.info("File '%s' does not exist in '%s'", args.key, args.name)

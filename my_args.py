@@ -67,11 +67,40 @@ def build_subcommands(subparsers):
     )
 
     obj = bucket_arguments(
-        subparsers.add_parser("object", help="Work with one object, e.g. delete it (-del).")
+        subparsers.add_parser(
+            "object", help="Work with one object: delete it or manage its versions."
+        )
     )
     obj.add_argument("key", type=str, help="Object key (file name), e.g. dev/photo.png.")
-    obj.add_argument(
+    obj_action = obj.add_mutually_exclusive_group(required=True)
+    obj_action.add_argument(
         "-del", "--delete", action="store_true", help="Delete the object from the bucket."
+    )
+    obj_action.add_argument(
+        "-lv",
+        "--list_versions",
+        action="store_true",
+        help="Show how many versions the object has and when each was created.",
+    )
+    obj_action.add_argument(
+        "-pv",
+        "--promote_previous",
+        action="store_true",
+        help="Copy the second-to-last version so it becomes the newest version.",
+    )
+
+    bucket_versioning = bucket_arguments(
+        subparsers.add_parser("versioning", help="Show, enable or suspend bucket versioning.")
+    )
+    versioning_action = bucket_versioning.add_mutually_exclusive_group(required=True)
+    versioning_action.add_argument(
+        "-st", "--status", action="store_true", help="Show whether versioning is enabled."
+    )
+    versioning_action.add_argument(
+        "-on", "--enable", action="store_true", help="Enable versioning."
+    )
+    versioning_action.add_argument(
+        "-off", "--suspend", action="store_true", help="Suspend versioning."
     )
 
     for command, help_text in (

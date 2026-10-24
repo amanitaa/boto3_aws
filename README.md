@@ -68,6 +68,17 @@ bucket does not exist.
 poetry run python main.py delete_bucket "any-name-of-s3"
 ```
 
+### Versioning
+
+Show whether versioning is enabled (`-st`), or enable (`-on`) / suspend
+(`-off`) it.
+
+```shell
+poetry run python main.py versioning "any-name-of-s3" -st
+poetry run python main.py versioning "any-name-of-s3" -on
+poetry run python main.py versioning "any-name-of-s3" -off
+```
+
 ### Lifecycle policy
 
 Deletes objects automatically 120 days after they were created (use `-d` to
@@ -160,6 +171,26 @@ poetry run python main.py object "any-name-of-s3" "dev/photo.png" -del
 > If versioning is enabled on the bucket, S3 only adds a *delete marker*: the
 > file disappears from listings, but older versions are kept.
 
+### File versions
+
+Show how many versions a file has, with the creation date of each (newest
+first):
+
+```shell
+poetry run python main.py object "any-name-of-s3" "notes.txt" -lv
+```
+
+Promote the second-to-last version to a new version. It is copied with
+`copy_object`, so the history is kept and the restored content becomes the
+newest version:
+
+```shell
+poetry run python main.py object "any-name-of-s3" "notes.txt" -pv
+```
+
+> Versioning must be enabled on the bucket, and the file needs at least 2
+> versions.
+
 ### Make an object public
 
 ```shell
@@ -183,8 +214,10 @@ poetry run python main.py list_objects "any-name-of-s3"
 | `auth.py` | `init_client()` |
 | `bucket/crud.py` | `list_buckets()`, `create_bucket()`, `delete_bucket()`, `bucket_exists()` |
 | `bucket/lifecycle.py` | `set_lifecycle_policy()`, `read_lifecycle_policy()` |
+| `bucket/versioning.py` | `versioning()`, `get_versioning_status()` |
 | `bucket/policy.py` | `generate_public_read_policy()`, `create_bucket_policy()`, `read_bucket_policy()` |
 | `object/crud.py` | `download_file_and_upload_to_s3()`, `upload_small_file()`, `upload_large_file()`, `delete_object()` |
+| `object/versioning.py` | `list_object_versions()`, `rollback_to_version()`, `promote_previous_version()` |
 | `object/policy.py` | `set_object_access_policy()` |
 | `my_args.py` | CLI arguments |
 | `main.py` | Entry point |
