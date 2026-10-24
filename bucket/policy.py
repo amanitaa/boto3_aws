@@ -1,25 +1,45 @@
 import json
+import logging
 
 from botocore.exceptions import ClientError
 
+logger = logging.getLogger(__name__)
 
-def public_prefix_policy(bucket_name, prefixes=("dev", "test")):
+
+def generate_public_read_policy(bucket_name, prefixes=None):
+    if prefixes:
+        resource = [f"arn:aws:s3:::{bucket_name}/{prefix.strip('/')}/*" for prefix in prefixes]
+    else:
+        resource = f"arn:aws:s3:::{bucket_name}/*"
+
     policy = {
         "Version": "2012-10-17",
         "Statement": [
             {
-                "Sid": "PublicReadDevTest",
+                "Sid": "PublicReadGetObject",
                 "Effect": "Allow",
                 "Principal": "*",
                 "Action": "s3:GetObject",
-                "Resource": [
-                    f"arn:aws:s3:::{bucket_name}/{prefix}/*" for prefix in prefixes
-                ],
+                "Resource": resource,
             }
         ],
     }
 
     return json.dumps(policy)
+
+
+def allow_public_access(aws_s3_client, bucket_name):
+    aws_s3_client.delete_public_access_block(Bucket=bucket_name)
+    logger.debug("Public access block removed from '%s'", bucket_name)
+
+
+def create_bucket_policy(aws_s3_client, bucket_name, policy) -> bool:
+    allow_public_access(aws_s3_client, bucket_name)
+    response = aws_s3_client.put_bucket_policy(Bucket=bucket_name, Policy=policy)
+    status_code = response["ResponseMetadata"]["HTTPStatusCode"]
+    if status_code in (200, 204):
+        return True
+    return False
 
 
 def read_bucket_policy(aws_s3_client, bucket_name):
@@ -30,23 +50,3 @@ def read_bucket_policy(aws_s3_client, bucket_name):
         if e.response["Error"]["Code"] == "NoSuchBucketPolicy":
             return None
         raise
-
-
-def allow_public_policy(aws_s3_client, bucket_name):
-    aws_s3_client.put_public_access_block(
-        Bucket=bucket_name,
-        PublicAccessBlockConfiguration={
-            "BlockPublicAcls": True,
-            "IgnorePublicAcls": True,
-            "BlockPublicPolicy": False,
-            "RestrictPublicBuckets": False,
-        },
-    )
-
-
-def assign_policy(aws_s3_client, bucket_name, policy) -> bool:
-    response = aws_s3_client.put_bucket_policy(Bucket=bucket_name, Policy=policy)
-    status_code = response["ResponseMetadata"]["HTTPStatusCode"]
-    if status_code in (200, 204):
-        return True
-    return False

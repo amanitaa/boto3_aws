@@ -1,8 +1,15 @@
+import logging
+
 from botocore.exceptions import ClientError
+
+logger = logging.getLogger(__name__)
+
+
+def list_buckets(aws_s3_client) -> list:
+    return aws_s3_client.list_buckets()["Buckets"]
 
 
 def bucket_exists(aws_s3_client, bucket_name) -> bool:
-    # https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/s3/client/head_bucket.html
     try:
         aws_s3_client.head_bucket(Bucket=bucket_name)
         return True
@@ -11,6 +18,7 @@ def bucket_exists(aws_s3_client, bucket_name) -> bool:
         if code in ("404", "NoSuchBucket"):
             return False
         if code == "403":
+            logger.debug("Bucket %s exists but belongs to another account", bucket_name)
             return True
         raise
 
@@ -29,6 +37,7 @@ def create_bucket(aws_s3_client, bucket_name) -> bool:
         return True
     return False
 
+
 def empty_bucket(aws_s3_client, bucket_name) -> int:
     deleted = 0
     paginator = aws_s3_client.get_paginator("list_object_versions")
@@ -46,6 +55,9 @@ def empty_bucket(aws_s3_client, bucket_name) -> int:
 
 
 def delete_bucket(aws_s3_client, bucket_name) -> bool:
+    deleted = empty_bucket(aws_s3_client, bucket_name)
+    if deleted:
+        logger.info("Deleted %d object(s) from '%s'", deleted, bucket_name)
     response = aws_s3_client.delete_bucket(Bucket=bucket_name)
     status_code = response["ResponseMetadata"]["HTTPStatusCode"]
     if status_code == 204:
