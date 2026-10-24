@@ -159,6 +159,31 @@ Options:
 - `-k`, `--keep_local` – also save the file locally
 - `--public` – make the uploaded file public
 
+### Upload any file into a folder by type
+
+Uploads a file of **any** type into a folder named after its real type. The
+type is detected from the file content with `python-magic`, so a PNG named
+`photo.jpg` still goes into `png/`.
+
+```shell
+poetry run python main.py upload "any-name-of-s3" ./report.pdf    # -> pdf/report.pdf
+poetry run python main.py upload "any-name-of-s3" ./users.csv     # -> csv/users.csv
+poetry run python main.py upload "any-name-of-s3" ./fake.jpg      # PNG content -> png/fake.jpg
+```
+
+How the folder is chosen:
+
+1. Plain text and unknown binary content (`text/plain`,
+   `application/octet-stream`) can't be told apart by content (CSV, `.py` and
+   `.md` are all `text/plain`), so the file's own extension is used. Without an
+   extension: `txt/` for text, `unknown/` otherwise.
+2. If the file's extension matches the detected type, it is kept
+   (`pic.jpeg` → `jpeg/`, the same folder `bucket -org` uses).
+3. Otherwise the detected type wins and a warning is shown.
+
+If the file already exists in that folder the upload stops; add `--overwrite`
+to replace it. Large files are uploaded in parts automatically.
+
 ### Upload a small file
 
 Uploads a local file (up to 100 MB) with a single `put_object` request.
@@ -245,6 +270,7 @@ poetry run python main.py list_objects "any-name-of-s3"
 | `bucket/versioning.py` | `versioning()`, `get_versioning_status()` |
 | `bucket/policy.py` | `generate_public_read_policy()`, `create_bucket_policy()`, `read_bucket_policy()` |
 | `object/crud.py` | `download_file_and_upload_to_s3()`, `upload_small_file()`, `upload_large_file()`, `delete_object()` |
+| `object/type_folder.py` | `folder_for_file()`, `upload_to_type_folder()` |
 | `object/versioning.py` | `list_object_versions()`, `rollback_to_version()`, `promote_previous_version()` |
 | `object/policy.py` | `set_object_access_policy()` |
 | `my_args.py` | CLI arguments |

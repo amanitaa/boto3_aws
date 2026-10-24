@@ -114,6 +114,18 @@ def build_subcommands(subparsers):
         "-off", "--suspend", action="store_true", help="Suspend versioning."
     )
 
+    upload = bucket_arguments(
+        subparsers.add_parser(
+            "upload",
+            help="Upload a file of any type into a folder named after its real type "
+            "(detected with python-magic).",
+        )
+    )
+    upload.add_argument("file", type=str, help="Path to the local file.")
+    upload.add_argument(
+        "--overwrite", action="store_true", help="Replace the file if it already exists."
+    )
+
     for command, help_text in (
         ("upload_small", "Upload a small local file (up to 100 MB) with a single request."),
         ("upload_large", "Upload a large local file in parts (multipart upload)."),

@@ -29,6 +29,7 @@ from object.crud import (
 )
 from object.policy import set_object_access_policy
 from object.versioning import list_object_versions, promote_previous_version
+from object.type_folder import upload_to_type_folder
 
 logger = logging.getLogger("s3_cli")
 
@@ -121,6 +122,11 @@ def main():
             require_bucket(s3_client, args.name)
             if set_object_access_policy(s3_client, args.name, args.key):
                 logger.info("Object is public: %s", public_url(s3_client, args.name, args.key))
+
+        case "upload":
+            require_bucket(s3_client, args.name)
+            url = upload_to_type_folder(s3_client, args.name, args.file, args.overwrite)
+            logger.info("Uploaded: %s", url)
 
         case "upload_small":
             require_bucket(s3_client, args.name)
@@ -248,7 +254,7 @@ if __name__ == "__main__":
     except URLError as e:
         logger.error("Could not download file: %s", e.reason)
         sys.exit(1)
-    except (FileNotFoundError, ValueError) as e:
+    except (FileNotFoundError, FileExistsError, ValueError) as e:
         logger.error(e)
         sys.exit(1)
     except NoCredentialsError:
