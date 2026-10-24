@@ -243,6 +243,29 @@ poetry run python main.py object "any-name-of-s3" "notes.txt" -pv
 > Versioning must be enabled on the bucket, and the file needs at least 2
 > versions.
 
+### Delete versions older than 6 months
+
+Checks the versions of every file passed as an argument and **permanently**
+deletes the versions created more than 6 months ago.
+
+```shell
+poetry run python main.py delete_old_versions "any-name-of-s3" notes.txt report.csv --dry_run
+poetry run python main.py delete_old_versions "any-name-of-s3" notes.txt report.csv
+```
+
+```
+notes.txt: 4 version(s), 2 to delete
+  2026-10-20 09:12:41  id=EwAS6r1h...  kept
+  2026-09-02 17:40:03  id=6_1tbmK0...  kept
+  2026-03-11 08:05:19  id=IHKZF9DY...  deleted
+  2025-12-29 14:22:57  id=KTjBl4Pt...  deleted
+```
+
+- The **current version is always kept**, even if it is older than 6 months
+  (deleting it would delete the file). Add `--include_latest` to delete it too.
+- `--dry_run` only shows what would be deleted.
+- `-m 12` changes the age limit (in calendar months).
+
 ### Make an object public
 
 ```shell
@@ -271,7 +294,7 @@ poetry run python main.py list_objects "any-name-of-s3"
 | `bucket/policy.py` | `generate_public_read_policy()`, `create_bucket_policy()`, `read_bucket_policy()` |
 | `object/crud.py` | `download_file_and_upload_to_s3()`, `upload_small_file()`, `upload_large_file()`, `delete_object()` |
 | `object/type_folder.py` | `folder_for_file()`, `upload_to_type_folder()` |
-| `object/versioning.py` | `list_object_versions()`, `rollback_to_version()`, `promote_previous_version()` |
+| `object/versioning.py` | `list_object_versions()`, `rollback_to_version()`, `promote_previous_version()`, `delete_versions_older_than()` |
 | `object/policy.py` | `set_object_access_policy()` |
 | `my_args.py` | CLI arguments |
 | `main.py` | Entry point |

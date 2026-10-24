@@ -28,7 +28,12 @@ from object.crud import (
     UnsupportedFileType,
 )
 from object.policy import set_object_access_policy
-from object.versioning import list_object_versions, promote_previous_version
+from object.versioning import (
+    list_object_versions,
+    promote_previous_version,
+    months_ago,
+    delete_versions_older_than,
+)
 from object.type_folder import upload_to_type_folder
 
 logger = logging.getLogger("s3_cli")
@@ -177,6 +182,52 @@ def main():
                 logger.info("Moved %d file(s) in '%s':", sum(moved.values()), args.name)
                 for folder, count in sorted(moved.items()):
                     print(f"{folder} - {count}")
+
+        case "delete_old_versions":
+            require_bucket(s3_client, args.name)
+            if args.months < 1:
+                parser.error("--months must be at least 1")
+            cutoff = months_ago(args.months)
+            logger.info(
+                "%s versions created before %s",
+                "Checking (dry run)" if args.dry_run else "Deleting",
+                f"{cutoff:%Y-%m-%d %H:%M:%S %Z}",
+            )
+
+            total_deleted = 0
+            for file_name in args.files:
+                versions, old = delete_versions_older_than(
+                    s3_client,
+                    args.name,
+                    file_name,
+                    cutoff,
+                    args.include_latest,
+                    args.dry_run,
+                )
+                if not versions:
+                    logger.warning("File '%s' does not exist in '%s'", file_name, args.name)
+                    continue
+
+                old_ids = {v["VersionId"] for v in old}
+                print(f"{file_name}: {len(versions)} version(s), {len(old)} to delete")
+                for version in versions:
+                    if version["VersionId"] in old_ids:
+                        mark = "would delete" if args.dry_run else "deleted"
+                    elif version["IsLatest"] and version["LastModified"] < cutoff:
+                        mark = "kept (current version)"
+                    else:
+                        mark = "kept"
+                    print(
+                        f"  {version['LastModified']:%Y-%m-%d %H:%M:%S}"
+                        f"  id={version['VersionId']}  {mark}"
+                    )
+                total_deleted += len(old)
+
+            logger.info(
+                "%d version(s) %s",
+                total_deleted,
+                "would be deleted" if args.dry_run else "deleted",
+            )
 
         case "versioning":
             require_bucket(s3_client, args.name)

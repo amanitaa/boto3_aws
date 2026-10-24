@@ -100,6 +100,27 @@ def build_subcommands(subparsers):
         help="Move each top-level file into a folder named after its extension.",
     )
 
+    old_versions = bucket_arguments(
+        subparsers.add_parser(
+            "delete_old_versions",
+            help="Delete versions of the given files that are older than 6 months.",
+        )
+    )
+    old_versions.add_argument(
+        "files", nargs="+", metavar="file", help="One or more object keys (file names)."
+    )
+    old_versions.add_argument(
+        "-m", "--months", type=int, default=6, help="Age limit in months. Default: 6."
+    )
+    old_versions.add_argument(
+        "--include_latest",
+        action="store_true",
+        help="Also delete the current version if it is too old (deletes the file).",
+    )
+    old_versions.add_argument(
+        "--dry_run", action="store_true", help="Only show what would be deleted."
+    )
+
     bucket_versioning = bucket_arguments(
         subparsers.add_parser("versioning", help="Show, enable or suspend bucket versioning.")
     )
