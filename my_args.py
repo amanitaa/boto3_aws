@@ -66,6 +66,14 @@ def build_subcommands(subparsers):
         subparsers.add_parser("list_objects", help="List objects in a bucket.")
     )
 
+    obj = bucket_arguments(
+        subparsers.add_parser("object", help="Work with one object, e.g. delete it (-del).")
+    )
+    obj.add_argument("key", type=str, help="Object key (file name), e.g. dev/photo.png.")
+    obj.add_argument(
+        "-del", "--delete", action="store_true", help="Delete the object from the bucket."
+    )
+
     for command, help_text in (
         ("upload_small", "Upload a small local file (up to 100 MB) with a single request."),
         ("upload_large", "Upload a large local file in parts (multipart upload)."),

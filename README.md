@@ -148,6 +148,18 @@ Options for both upload commands:
 - `--skip_mime_check` – allow any file type; by default only `.bmp`, `.jpg`,
   `.jpeg`, `.png`, `.webp` and `.mp4` are accepted (checked with `python-magic`)
 
+### Delete a file
+
+Pass the bucket name, the file name (key) and the `-del` flag. If the file does
+not exist, the command says so instead of failing.
+
+```shell
+poetry run python main.py object "any-name-of-s3" "dev/photo.png" -del
+```
+
+> If versioning is enabled on the bucket, S3 only adds a *delete marker*: the
+> file disappears from listings, but older versions are kept.
+
 ### Make an object public
 
 ```shell
@@ -172,7 +184,7 @@ poetry run python main.py list_objects "any-name-of-s3"
 | `bucket/crud.py` | `list_buckets()`, `create_bucket()`, `delete_bucket()`, `bucket_exists()` |
 | `bucket/lifecycle.py` | `set_lifecycle_policy()`, `read_lifecycle_policy()` |
 | `bucket/policy.py` | `generate_public_read_policy()`, `create_bucket_policy()`, `read_bucket_policy()` |
-| `object/crud.py` | `download_file_and_upload_to_s3()`, `upload_small_file()`, `upload_large_file()` |
+| `object/crud.py` | `download_file_and_upload_to_s3()`, `upload_small_file()`, `upload_large_file()`, `delete_object()` |
 | `object/policy.py` | `set_object_access_policy()` |
 | `my_args.py` | CLI arguments |
 | `main.py` | Entry point |

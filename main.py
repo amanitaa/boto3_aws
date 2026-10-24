@@ -21,6 +21,8 @@ from object.crud import (
     public_url,
     upload_small_file,
     upload_large_file,
+    object_exists,
+    delete_object,
     UnsupportedFileType,
 )
 from object.policy import set_object_access_policy
@@ -156,6 +158,22 @@ def main():
                 print(json.dumps(rules, indent=2))
             else:
                 logger.info("Bucket '%s' has no lifecycle policy", args.name)
+
+        case "object":
+            if not args.delete:
+                parser.error("object: choose an action, e.g. -del to delete the file")
+            require_bucket(s3_client, args.name)
+            if not object_exists(s3_client, args.name, args.key):
+                logger.info("File '%s' does not exist in '%s'", args.key, args.name)
+            else:
+                result = delete_object(s3_client, args.name, args.key)
+                if result["deleted"]:
+                    logger.info("File '%s' deleted from '%s'", args.key, args.name)
+                if result["delete_marker"]:
+                    logger.info(
+                        "Versioning is enabled: older versions of '%s' are kept",
+                        args.key,
+                    )
 
         case "list_objects":
             require_bucket(s3_client, args.name)

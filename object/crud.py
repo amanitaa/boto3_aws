@@ -8,6 +8,7 @@ from time import time
 from urllib.request import Request, urlopen
 
 import magic
+from botocore.exceptions import ClientError
 from boto3.s3.transfer import TransferConfig
 
 logger = logging.getLogger(__name__)
@@ -162,3 +163,22 @@ class UploadProgress:
 
 def list_objects(aws_s3_client, bucket_name) -> list:
     return aws_s3_client.list_objects_v2(Bucket=bucket_name).get("Contents", [])
+
+
+def object_exists(aws_s3_client, bucket_name, key) -> bool:
+    try:
+        aws_s3_client.head_object(Bucket=bucket_name, Key=key)
+        return True
+    except ClientError as e:
+        if e.response["Error"]["Code"] in ("404", "NoSuchKey"):
+            return False
+        raise
+
+
+def delete_object(aws_s3_client, bucket_name, key) -> dict:
+    response = aws_s3_client.delete_object(Bucket=bucket_name, Key=key)
+    status_code = response["ResponseMetadata"]["HTTPStatusCode"]
+    return {
+        "deleted": status_code == 204,
+        "delete_marker": response.get("DeleteMarker", False),
+    }
