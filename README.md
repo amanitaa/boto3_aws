@@ -282,6 +282,54 @@ poetry run python main.py public_object "any-name-of-s3" "file_name.jpg"
 poetry run python main.py list_objects "any-name-of-s3"
 ```
 
+## Static website hosting
+
+`host` does everything needed to host a site on S3: creates the bucket if it
+does not exist, makes it publicly readable, uploads the files with the correct
+`Content-Type`, enables website hosting and prints the website URL.
+
+### Simple page
+
+`static_web_page/index.html` contains my name:
+
+```shell
+poetry run python main.py host "any-name-of-s3" static_web_page
+```
+
+### React.js app
+
+`react_app/` is a small Vite + React project (a to-do list). Build it, then
+host the `dist/` folder. `--spa` serves `index.html` for unknown paths, so
+client-side routes work:
+
+```shell
+cd react_app && npm install && npm run build && cd ..
+poetry run python main.py host "any-name-of-s3" react_app/dist --spa
+```
+
+Run it locally while developing:
+
+```shell
+cd react_app && npm run dev
+```
+
+### Options
+
+- `--spa` – single-page app: unknown paths return `index.html`
+- `--clean` – delete files in the bucket that are not part of this upload
+  (useful when redeploying a React build, whose file names change each build)
+
+Turn hosting off again:
+
+```shell
+poetry run python main.py unhost "any-name-of-s3"
+```
+
+> The `Content-Type` of each file is taken from its extension (`.js` →
+> `text/javascript`, `.css` → `text/css`), because `python-magic` reports both
+> as `text/plain` and browsers refuse to run scripts with the wrong type.
+> `python-magic` is used only for unknown extensions.
+
 ## Project structure
 
 | File | Functions |
@@ -296,5 +344,9 @@ poetry run python main.py list_objects "any-name-of-s3"
 | `object/type_folder.py` | `folder_for_file()`, `upload_to_type_folder()` |
 | `object/versioning.py` | `list_object_versions()`, `rollback_to_version()`, `promote_previous_version()`, `delete_versions_older_than()` |
 | `object/policy.py` | `set_object_access_policy()` |
+| `host_static/host_web_configuration.py` | `set_bucket_website_policy()`, `website_url()` |
+| `host_static/host_web_page_files.py` | `static_web_page_file()` |
+| `static_web_page/` | Simple `index.html` page |
+| `react_app/` | Vite + React demo app |
 | `my_args.py` | CLI arguments |
 | `main.py` | Entry point |

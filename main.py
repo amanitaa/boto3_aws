@@ -35,6 +35,12 @@ from object.versioning import (
     delete_versions_older_than,
 )
 from object.type_folder import upload_to_type_folder
+from host_static.host_web_configuration import (
+    set_bucket_website_policy,
+    get_website_configuration,
+    website_url,
+)
+from host_static.host_web_page_files import static_web_page_file, delete_other_files
 
 logger = logging.getLogger("s3_cli")
 
@@ -228,6 +234,39 @@ def main():
                 total_deleted,
                 "would be deleted" if args.dry_run else "deleted",
             )
+
+        case "host":
+            if bucket_exists(s3_client, args.name):
+                logger.info("Using existing bucket '%s'", args.name)
+            elif create_bucket(s3_client, args.name):
+                logger.info("Bucket '%s' successfully created", args.name)
+
+            policy = generate_public_read_policy(args.name)
+            current_policy = read_bucket_policy(s3_client, args.name)
+            if current_policy and json.loads(current_policy) != json.loads(policy):
+                logger.warning("Replacing the existing bucket policy with public read access")
+            if current_policy is None or json.loads(current_policy) != json.loads(policy):
+                create_bucket_policy(s3_client, args.name, policy)
+                logger.info("Public read policy assigned")
+
+            uploaded = static_web_page_file(s3_client, args.name, args.path)
+            if args.clean:
+                removed = delete_other_files(s3_client, args.name, uploaded)
+                if removed:
+                    logger.info("Deleted %d old file(s)", removed)
+
+            set_bucket_website_policy(
+                s3_client, args.name, True, "index.html" if args.spa else None
+            )
+            logger.info("Website hosting enabled, %d file(s) uploaded", len(uploaded))
+            print(f"\n  {website_url(s3_client, args.name)}\n")
+
+        case "unhost":
+            require_bucket(s3_client, args.name)
+            if get_website_configuration(s3_client, args.name) is None:
+                logger.info("Website hosting is not enabled for '%s'", args.name)
+            elif set_bucket_website_policy(s3_client, args.name, False):
+                logger.info("Website hosting disabled for '%s'", args.name)
 
         case "versioning":
             require_bucket(s3_client, args.name)

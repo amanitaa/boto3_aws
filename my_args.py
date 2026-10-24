@@ -121,6 +121,29 @@ def build_subcommands(subparsers):
         "--dry_run", action="store_true", help="Only show what would be deleted."
     )
 
+    host = bucket_arguments(
+        subparsers.add_parser(
+            "host", help="Host a static website (a folder or index.html) on S3."
+        )
+    )
+    host.add_argument(
+        "path", type=str, help="Folder with index.html (e.g. react_app/dist) or an index.html file."
+    )
+    host.add_argument(
+        "--spa",
+        action="store_true",
+        help="Single-page app (React): serve index.html for unknown paths.",
+    )
+    host.add_argument(
+        "--clean",
+        action="store_true",
+        help="Delete files in the bucket that are not part of this upload.",
+    )
+
+    bucket_arguments(
+        subparsers.add_parser("unhost", help="Turn off static website hosting.")
+    )
+
     bucket_versioning = bucket_arguments(
         subparsers.add_parser("versioning", help="Show, enable or suspend bucket versioning.")
     )

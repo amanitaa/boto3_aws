@@ -4,3 +4,5 @@
 __pycache__/
 *.pem
 .idea/
+node_modules/
+react_app/dist/
