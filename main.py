@@ -8,6 +8,7 @@ from botocore.exceptions import ClientError, NoCredentialsError
 
 from auth import init_client
 from bucket.crud import list_buckets, create_bucket, delete_bucket, bucket_exists
+from bucket.lifecycle import set_lifecycle_policy, read_lifecycle_policy
 from bucket.policy import (
     read_bucket_policy,
     generate_public_read_policy,
@@ -18,6 +19,8 @@ from object.crud import (
     download_file_and_upload_to_s3,
     list_objects,
     public_url,
+    upload_small_file,
+    upload_large_file,
     UnsupportedFileType,
 )
 from object.policy import set_object_access_policy
@@ -114,6 +117,46 @@ def main():
             if set_object_access_policy(s3_client, args.name, args.key):
                 logger.info("Object is public: %s", public_url(s3_client, args.name, args.key))
 
+        case "upload_small":
+            require_bucket(s3_client, args.name)
+            url = upload_small_file(
+                s3_client, args.name, args.file, args.key, not args.skip_mime_check
+            )
+            logger.info("Uploaded: %s", url)
+
+        case "upload_large":
+            require_bucket(s3_client, args.name)
+            if args.chunk_mb < 5:
+                parser.error("--chunk_mb must be at least 5 (S3 minimum part size)")
+            url = upload_large_file(
+                s3_client,
+                args.name,
+                args.file,
+                args.key,
+                not args.skip_mime_check,
+                args.chunk_mb,
+            )
+            logger.info("Uploaded: %s", url)
+
+        case "set_lifecycle":
+            require_bucket(s3_client, args.name)
+            if args.days < 1:
+                parser.error("--days must be at least 1")
+            if set_lifecycle_policy(s3_client, args.name, args.days):
+                logger.info(
+                    "Lifecycle policy set: objects in '%s' are deleted %d days after creation",
+                    args.name,
+                    args.days,
+                )
+
+        case "read_lifecycle":
+            require_bucket(s3_client, args.name)
+            rules = read_lifecycle_policy(s3_client, args.name)
+            if rules:
+                print(json.dumps(rules, indent=2))
+            else:
+                logger.info("Bucket '%s' has no lifecycle policy", args.name)
+
         case "list_objects":
             require_bucket(s3_client, args.name)
             objects = list_objects(s3_client, args.name)
@@ -131,6 +174,9 @@ if __name__ == "__main__":
         sys.exit(1)
     except URLError as e:
         logger.error("Could not download file: %s", e.reason)
+        sys.exit(1)
+    except (FileNotFoundError, ValueError) as e:
+        logger.error(e)
         sys.exit(1)
     except NoCredentialsError:
         logger.error("AWS credentials not found. Copy .env.example to .env and fill it in.")

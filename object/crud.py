@@ -1,13 +1,19 @@
 import io
 import logging
+import os
+import sys
 import tempfile
 from hashlib import md5
 from time import time
 from urllib.request import Request, urlopen
 
 import magic
+from boto3.s3.transfer import TransferConfig
 
 logger = logging.getLogger(__name__)
+
+MB = 1024 * 1024
+SMALL_FILE_LIMIT = 100 * MB
 
 ALLOWED_MIME_TYPES = {
     "image/bmp": ".bmp",
@@ -27,7 +33,11 @@ def detect_file_type(content) -> tuple:
     with tempfile.NamedTemporaryFile() as tmp:
         tmp.write(content)
         tmp.flush()
-        mime_type = magic.from_file(tmp.name, mime=True)
+        return detect_file_type_from_path(tmp.name)
+
+
+def detect_file_type_from_path(file_path) -> tuple:
+    mime_type = magic.from_file(file_path, mime=True)
     if mime_type not in ALLOWED_MIME_TYPES:
         raise UnsupportedFileType(
             f"File type '{mime_type}' is not allowed. "
@@ -66,6 +76,88 @@ def download_file_and_upload_to_s3(
         logger.info("Saved local copy: %s", file_name)
 
     return public_url(aws_s3_client, bucket_name, file_name)
+
+
+def prepare_local_upload(file_path, key, validate_type) -> tuple:
+    if not os.path.isfile(file_path):
+        raise FileNotFoundError(f"File not found: {file_path}")
+
+    extra_args = {}
+    if validate_type:
+        mime_type, _ = detect_file_type_from_path(file_path)
+        logger.info("Detected file type: %s", mime_type)
+        extra_args["ContentType"] = mime_type
+    else:
+        extra_args["ContentType"] = magic.from_file(file_path, mime=True)
+
+    return key or os.path.basename(file_path), extra_args
+
+
+def upload_small_file(
+    aws_s3_client, bucket_name, file_path, key=None, validate_type=True
+) -> str:
+    size = os.path.getsize(file_path) if os.path.isfile(file_path) else 0
+    if size > SMALL_FILE_LIMIT:
+        raise ValueError(
+            f"File is {size / MB:.1f} MB; small uploads are limited to "
+            f"{SMALL_FILE_LIMIT // MB} MB. Use upload_large instead."
+        )
+    key, extra_args = prepare_local_upload(file_path, key, validate_type)
+
+    with open(file_path, "rb") as file:
+        aws_s3_client.put_object(Bucket=bucket_name, Key=key, Body=file, **extra_args)
+    logger.debug("put_object: %s (%d bytes)", key, size)
+
+    return public_url(aws_s3_client, bucket_name, key)
+
+
+def upload_large_file(
+    aws_s3_client, bucket_name, file_path, key=None, validate_type=True, chunk_mb=8
+) -> str:
+    key, extra_args = prepare_local_upload(file_path, key, validate_type)
+    size = os.path.getsize(file_path)
+
+    config = TransferConfig(
+        multipart_threshold=chunk_mb * MB,
+        multipart_chunksize=chunk_mb * MB,
+        max_concurrency=10,
+        use_threads=True,
+    )
+    progress = UploadProgress(size)
+    aws_s3_client.upload_file(
+        file_path,
+        bucket_name,
+        key,
+        ExtraArgs=extra_args,
+        Config=config,
+        Callback=progress,
+    )
+    progress.finish()
+
+    return public_url(aws_s3_client, bucket_name, key)
+
+
+class UploadProgress:
+    def __init__(self, total):
+        self.total = total
+        self.sent = 0
+        self.last_percent = -1
+
+    def __call__(self, bytes_sent):
+        self.sent += bytes_sent
+        percent = int(self.sent * 100 / self.total) if self.total else 100
+        if percent != self.last_percent and sys.stderr.isatty():
+            self.last_percent = percent
+            print(
+                f"\r  uploading: {percent:3d}% ({self.sent / MB:.1f}/{self.total / MB:.1f} MB)",
+                end="",
+                file=sys.stderr,
+                flush=True,
+            )
+
+    def finish(self):
+        if sys.stderr.isatty():
+            print(file=sys.stderr, flush=True)
 
 
 def list_objects(aws_s3_client, bucket_name) -> list:

@@ -65,3 +65,39 @@ def build_subcommands(subparsers):
     bucket_arguments(
         subparsers.add_parser("list_objects", help="List objects in a bucket.")
     )
+
+    for command, help_text in (
+        ("upload_small", "Upload a small local file (up to 100 MB) with a single request."),
+        ("upload_large", "Upload a large local file in parts (multipart upload)."),
+    ):
+        upload_local = bucket_arguments(subparsers.add_parser(command, help=help_text))
+        upload_local.add_argument("file", type=str, help="Path to the local file.")
+        upload_local.add_argument(
+            "-k", "--key", type=str, help="Object key in S3. Default: the file name."
+        )
+        upload_local.add_argument(
+            "--skip_mime_check",
+            action="store_true",
+            help="Allow any file type (by default only .bmp, .jpg, .jpeg, .png, .webp, .mp4).",
+        )
+        if command == "upload_large":
+            upload_local.add_argument(
+                "--chunk_mb",
+                type=int,
+                default=8,
+                help="Part size in MB (minimum 5). Default: 8.",
+            )
+
+    lifecycle = bucket_arguments(
+        subparsers.add_parser(
+            "set_lifecycle",
+            help="Delete objects automatically N days after creation (default 120).",
+        )
+    )
+    lifecycle.add_argument(
+        "-d", "--days", type=int, default=120, help="Days until deletion. Default: 120."
+    )
+
+    bucket_arguments(
+        subparsers.add_parser("read_lifecycle", help="Print the bucket lifecycle rules.")
+    )

@@ -68,6 +68,18 @@ bucket does not exist.
 poetry run python main.py delete_bucket "any-name-of-s3"
 ```
 
+### Lifecycle policy
+
+Deletes objects automatically 120 days after they were created (use `-d` to
+change the number of days). The rule also removes old object versions and
+cleans up unfinished multipart uploads after 7 days.
+
+```shell
+poetry run python main.py set_lifecycle "any-name-of-s3"
+poetry run python main.py set_lifecycle "any-name-of-s3" -d 30
+poetry run python main.py read_lifecycle "any-name-of-s3"
+```
+
 ## Policy
 
 ### Read bucket policy
@@ -109,6 +121,33 @@ Options:
 - `-k`, `--keep_local` – also save the file locally
 - `--public` – make the uploaded file public
 
+### Upload a small file
+
+Uploads a local file (up to 100 MB) with a single `put_object` request.
+
+```shell
+poetry run python main.py upload_small "any-name-of-s3" ./photo.png
+poetry run python main.py upload_small "any-name-of-s3" ./photo.png -k dev/photo.png
+```
+
+### Upload a large file
+
+Uploads a local file in parts with a **multipart upload** (`upload_file` +
+`TransferConfig`): the file is split into 8 MB parts that are uploaded in
+parallel, and a progress bar is shown. Use `--chunk_mb` to change the part size
+(S3 minimum is 5 MB).
+
+```shell
+poetry run python main.py upload_large "any-name-of-s3" ./video.mp4
+poetry run python main.py upload_large "any-name-of-s3" ./video.mp4 --chunk_mb 16
+```
+
+Options for both upload commands:
+
+- `-k`, `--key` – object key in S3 (default: the file name)
+- `--skip_mime_check` – allow any file type; by default only `.bmp`, `.jpg`,
+  `.jpeg`, `.png`, `.webp` and `.mp4` are accepted (checked with `python-magic`)
+
 ### Make an object public
 
 ```shell
@@ -131,8 +170,9 @@ poetry run python main.py list_objects "any-name-of-s3"
 |---|---|
 | `auth.py` | `init_client()` |
 | `bucket/crud.py` | `list_buckets()`, `create_bucket()`, `delete_bucket()`, `bucket_exists()` |
+| `bucket/lifecycle.py` | `set_lifecycle_policy()`, `read_lifecycle_policy()` |
 | `bucket/policy.py` | `generate_public_read_policy()`, `create_bucket_policy()`, `read_bucket_policy()` |
-| `object/crud.py` | `download_file_and_upload_to_s3()` |
+| `object/crud.py` | `download_file_and_upload_to_s3()`, `upload_small_file()`, `upload_large_file()` |
 | `object/policy.py` | `set_object_access_policy()` |
 | `my_args.py` | CLI arguments |
 | `main.py` | Entry point |
