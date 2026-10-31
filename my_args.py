@@ -1,9 +1,36 @@
+import argparse
+
+
 def bucket_arguments(parser):
     parser.add_argument(
         "name",
         type=str,
         help="Pass bucket name.",
     )
+    return parser
+
+
+def build_inspire_parser():
+    parser = argparse.ArgumentParser(
+        prog="main.py",
+        description="Print a random quote and optionally save it to a bucket.",
+    )
+    parser.add_argument(
+        "name", nargs="?", help="Bucket to save the quote into (used with -save)."
+    )
+    parser.add_argument(
+        "--inspire",
+        nargs="?",
+        const="",
+        metavar="AUTHOR",
+        help="Print a random quote, only by AUTHOR if given.",
+    )
+    parser.add_argument(
+        "-save",
+        action="store_true",
+        help="Save the quote to the bucket as a .json file.",
+    )
+    parser.add_argument("-v", "--verbose", action="store_true", help="Show debug logs.")
     return parser
 
 

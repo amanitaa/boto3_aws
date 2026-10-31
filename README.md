@@ -340,6 +340,31 @@ poetry run python main.py unhost "any-name-of-s3"
 > as `text/plain` and browsers refuse to run scripts with the wrong type.
 > `python-magic` is used only for unknown extensions.
 
+## Quotes
+
+`--inspire` prints a random quote from the
+[Quotable API](https://api.quotable.kurokeita.dev/). It needs no AWS credentials
+unless `-save` is used.
+
+```shell
+poetry run python main.py --inspire
+```
+
+Only quotes by one author:
+
+```shell
+poetry run python main.py --inspire "Albert Einstein"
+```
+
+Print the quote and save it to the bucket as `quotes/<author>-<id>.json`:
+
+```shell
+poetry run python main.py "any-name-of-s3" --inspire "Albert Einstein" -save
+```
+
+> The author must be a full name that exists in the API. If it does not, the
+> command prints an error and saves nothing. "Linus Torvalds" is not in the API.
+
 ## Project structure
 
 | File | Functions |
@@ -356,6 +381,7 @@ poetry run python main.py unhost "any-name-of-s3"
 | `object/policy.py` | `set_object_access_policy()` |
 | `host_static/host_web_configuration.py` | `set_bucket_website_policy()`, `website_url()` |
 | `host_static/host_web_page_files.py` | `static_web_page_file()` |
+| `inspire/quotes.py` | `get_quote()`, `print_quote()`, `save_quote()` |
 | `html_demo_site/` | Demo website from `do-community/html_demo_site` |
 | `static_web_page/` | Simple `index.html` page |
 | `react_app/` | Vite + React demo app |

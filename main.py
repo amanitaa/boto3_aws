@@ -16,7 +16,8 @@ from bucket.policy import (
     generate_public_read_policy,
     create_bucket_policy,
 )
-from my_args import build_subcommands
+from inspire.quotes import get_quote, print_quote, save_quote
+from my_args import build_inspire_parser, build_subcommands
 from object.crud import (
     download_file_and_upload_to_s3,
     list_objects,
@@ -48,7 +49,8 @@ logger = logging.getLogger("s3_cli")
 parser = argparse.ArgumentParser(
     description="CLI program that helps with S3 buckets.",
     prog="main.py",
-    epilog="Run 'main.py <command> -h' to see help for a command.",
+    epilog="Run 'main.py <command> -h' to see help for a command. "
+    "Run 'main.py [bucket] --inspire [AUTHOR] [-save]' for a random quote.",
 )
 parser.add_argument(
     "-v", "--verbose", action="store_true", help="Show debug logs."
@@ -64,14 +66,42 @@ def require_bucket(s3_client, bucket_name):
         sys.exit(1)
 
 
-def main():
-    args = parser.parse_args()
+def setup_logging(verbose):
     logging.basicConfig(
-        level=logging.DEBUG if args.verbose else logging.INFO,
+        level=logging.DEBUG if verbose else logging.INFO,
         format="%(levelname)s: %(message)s",
     )
     for name in ("boto3", "botocore", "s3transfer", "urllib3"):
         logging.getLogger(name).setLevel(logging.WARNING)
+
+
+def inspire():
+    inspire_parser = build_inspire_parser()
+    args = inspire_parser.parse_args()
+    if args.save and not args.name:
+        inspire_parser.error("-save needs a bucket, e.g. main.py my-bucket --inspire -save")
+    setup_logging(args.verbose)
+
+    s3_client = None
+    if args.save:
+        s3_client = init_client()
+        require_bucket(s3_client, args.name)
+
+    result = get_quote(args.inspire or None)
+    print_quote(result)
+
+    if args.save:
+        key = save_quote(s3_client, args.name, result)
+        logger.info("Quote saved to s3://%s/%s", args.name, key)
+
+
+def main():
+    if any(arg.split("=")[0] == "--inspire" for arg in sys.argv[1:]):
+        inspire()
+        return
+
+    args = parser.parse_args()
+    setup_logging(args.verbose)
 
     s3_client = init_client()
 
@@ -341,7 +371,10 @@ if __name__ == "__main__":
         logger.error(e)
         sys.exit(1)
     except URLError as e:
-        logger.error("Could not download file: %s", e.reason)
+        logger.error("Could not download: %s", e.reason)
+        sys.exit(1)
+    except TimeoutError:
+        logger.error("The request timed out")
         sys.exit(1)
     except (FileNotFoundError, FileExistsError, ValueError) as e:
         logger.error(e)
