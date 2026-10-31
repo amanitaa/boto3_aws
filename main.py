@@ -241,19 +241,18 @@ def main():
             elif create_bucket(s3_client, args.name):
                 logger.info("Bucket '%s' successfully created", args.name)
 
-            policy = generate_public_read_policy(args.name)
-            current_policy = read_bucket_policy(s3_client, args.name)
-            if current_policy and json.loads(current_policy) != json.loads(policy):
-                logger.warning("Replacing the existing bucket policy with public read access")
-            if current_policy is None or json.loads(current_policy) != json.loads(policy):
-                create_bucket_policy(s3_client, args.name, policy)
-                logger.info("Public read policy assigned")
-
-            uploaded = static_web_page_file(s3_client, args.name, args.path)
+            uploaded = static_web_page_file(s3_client, args.name, args.source)
             if args.clean:
                 removed = delete_other_files(s3_client, args.name, uploaded)
                 if removed:
                     logger.info("Deleted %d old file(s)", removed)
+
+            policy = generate_public_read_policy(args.name)
+            current_policy = read_bucket_policy(s3_client, args.name)
+            if current_policy and json.loads(current_policy) != json.loads(policy):
+                logger.warning("Replacing the existing bucket policy with public read access")
+            create_bucket_policy(s3_client, args.name, policy)
+            logger.info("Public read policy assigned")
 
             set_bucket_website_policy(
                 s3_client, args.name, True, "index.html" if args.spa else None

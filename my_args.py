@@ -127,7 +127,11 @@ def build_subcommands(subparsers):
         )
     )
     host.add_argument(
-        "path", type=str, help="Folder with index.html (e.g. react_app/dist) or an index.html file."
+        "-s",
+        "--source",
+        type=str,
+        required=True,
+        help="Folder with index.html (e.g. react_app/dist) or an index.html file.",
     )
     host.add_argument(
         "--spa",

@@ -284,16 +284,26 @@ poetry run python main.py list_objects "any-name-of-s3"
 
 ## Static website hosting
 
-`host` does everything needed to host a site on S3: creates the bucket if it
-does not exist, makes it publicly readable, uploads the files with the correct
-`Content-Type`, enables website hosting and prints the website URL.
+`host` does everything needed to host a site on S3 with a single command: creates
+the bucket if it does not exist, makes it publicly readable, uploads the files
+with the correct `Content-Type`, enables website hosting and prints the website
+URL. Hidden files and folders (`.git`, `.env`, `.DS_Store`) are not uploaded.
+
+### Demo site
+
+`html_demo_site/` is the source code of
+[do-community/html_demo_site](https://github.com/do-community/html_demo_site):
+
+```shell
+poetry run python main.py host "my-s3-static-host" --source "html_demo_site"
+```
 
 ### Simple page
 
 `static_web_page/index.html` contains my name:
 
 ```shell
-poetry run python main.py host "any-name-of-s3" static_web_page
+poetry run python main.py host "any-name-of-s3" --source static_web_page
 ```
 
 ### React.js app
@@ -304,7 +314,7 @@ client-side routes work:
 
 ```shell
 cd react_app && npm install && npm run build && cd ..
-poetry run python main.py host "any-name-of-s3" react_app/dist --spa
+poetry run python main.py host "any-name-of-s3" --source react_app/dist --spa
 ```
 
 Run it locally while developing:
@@ -346,6 +356,7 @@ poetry run python main.py unhost "any-name-of-s3"
 | `object/policy.py` | `set_object_access_policy()` |
 | `host_static/host_web_configuration.py` | `set_bucket_website_policy()`, `website_url()` |
 | `host_static/host_web_page_files.py` | `static_web_page_file()` |
+| `html_demo_site/` | Demo website from `do-community/html_demo_site` |
 | `static_web_page/` | Simple `index.html` page |
 | `react_app/` | Vite + React demo app |
 | `my_args.py` | CLI arguments |

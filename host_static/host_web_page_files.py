@@ -19,13 +19,23 @@ def content_type_for(file_path) -> str:
     return magic.from_file(str(file_path), mime=True)
 
 
+def is_publishable(relative_path) -> bool:
+    # Hidden paths (.git, .env, .DS_Store) must never reach a public bucket.
+    return all(
+        part == ".well-known" or not part.startswith(".")
+        for part in relative_path.parts
+    )
+
+
 def static_web_page_file(aws_s3_client, bucket_name, path) -> list:
     root = Path(path).expanduser().resolve()
     if not root.exists():
         raise FileNotFoundError(f"Not found: {path}")
 
-    files = [root] if root.is_file() else sorted(p for p in root.rglob("*") if p.is_file())
     base = root.parent if root.is_file() else root
+    files = [root] if root.is_file() else sorted(
+        p for p in root.rglob("*") if p.is_file() and is_publishable(p.relative_to(base))
+    )
     if not any(f.relative_to(base).as_posix() == "index.html" for f in files):
         raise ValueError(f"'{path}' has no index.html at its top level")
 
